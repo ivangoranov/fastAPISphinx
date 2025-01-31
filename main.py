@@ -46,8 +46,10 @@ def run_indexer(index="all"):
         )
         if result.returncode == 0:
             logger.info("Indexer completed successfully")
+            logger.info(result.stdout)
         else:
             logger.error("Indexer failed with return code: %d", result.returncode)
+            logger.error(result.stderr)
     except FileNotFoundError:
         logger.error("indexer is not found on the system")
         logger.warning("skipping subprocess.run")
