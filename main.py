@@ -42,6 +42,7 @@ def run_indexer(index="all"):
             [os.getenv("SPHINX_INDEXER_PATH"), "--rotate", index],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            text=True,
         )
         if result.returncode == 0:
             logger.info("Indexer completed successfully")
