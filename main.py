@@ -39,7 +39,7 @@ def run_indexer(index="all"):
     logger.info("Starting indexer with index: %s", index)
     try:
         result = subprocess.run(
-            [os.getenv("SPHINX_INDEXER_PATH"), "--rotate", f"--{index}"],
+            [os.getenv("SPHINX_INDEXER_PATH"), "--rotate", index],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
