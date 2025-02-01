@@ -8,7 +8,7 @@ from fastapi.security import APIKeyHeader
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from starlette.datastructures import State
-
+from starlette.responses import JSONResponse
 
 # Load .env
 load_dotenv()
@@ -27,11 +27,26 @@ limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 
 
+@app.middleware("http")
+async def api_key_middleware(request: Request, call_next):
+    api_key = request.headers.get("X-API-Key")
+    if api_key != API_KEY:
+        return JSONResponse(status_code=403, content={"message": "Forbidden: Invalid or missing API key"})
+    if request.method == "POST" and request.url.path == "/reindex":
+        index = request.headers.get("index")
+        if not index:
+            return JSONResponse(status_code=666, content={"message": "Missing index in request"})
+    if request.method != "POST":
+        return JSONResponse(status_code=403, content={"message": "Forbidden: Invalid method"})
+    response = await call_next(request)
+    return response
+
+
 def verify_api_key(api_key: str = Security(api_key_header)):
     if api_key != API_KEY:
         logger.warning("Unauthorized access attempt with API key: %s", api_key)
         raise HTTPException(status_code=403, detail="Unauthorized")
-    logger.info("API key verified: %s", api_key)
+    logger.info("API key verified")
     return api_key
 
 
@@ -63,7 +78,7 @@ def reindex(request: Request, background_tasks: BackgroundTasks, api_key: str = 
     index = request.headers.get("index")
     if not index:
         logger.error("No index provided, skipping...")
-        return HTTPException(status_code=666, detail="Missing index in request")
+        raise HTTPException(status_code=666, detail="Missing index in request")
     logger.info(f"Reindexing requested for {index}")
     try:
         background_tasks.add_task(run_indexer, index=index)
