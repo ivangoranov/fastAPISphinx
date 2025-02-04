@@ -26,6 +26,31 @@ app.state = State()
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 
+# List of Cloudflare IPs
+CLOUDFLARE_IPS = [
+    "173.245.48.0/20",
+    "103.21.244.0/22",
+    "103.22.200.0/22",
+    "103.31.4.0/22",
+    "141.101.64.0/18",
+    "108.162.192.0/18",
+    "190.93.240.0/20",
+    "188.114.96.0/20",
+    "197.234.240.0/22",
+    "198.41.128.0/17",
+    "162.158.0.0/15",
+    "104.16.0.0/12",
+    "172.64.0.0/13",
+    "131.0.72.0/22"
+]
+
+
+def get_client_ip(request: Request):
+    for ip in CLOUDFLARE_IPS:
+        if request.client.host in ip:
+            return request.headers.get("CF-Connecting-IP", request.client.host)
+    return request.client.host
+
 
 @app.middleware("http")
 async def api_key_middleware(request: Request, call_next):
@@ -76,10 +101,11 @@ def run_indexer(index="all"):
 @limiter.limit("5 per minute")
 def reindex(request: Request, background_tasks: BackgroundTasks, api_key: str = Depends(verify_api_key)):
     index = request.headers.get("index")
+    client_ip = get_client_ip(request)
     if not index:
         logger.error("No index provided, skipping...")
         raise HTTPException(status_code=666, detail="Missing index in request")
-    logger.info(f"Reindexing requested for {index}")
+    logger.info(f"Reindexing requested for {index} from IP: {client_ip}")
     try:
         background_tasks.add_task(run_indexer, index=index)
     except Exception as e:
@@ -90,4 +116,4 @@ def reindex(request: Request, background_tasks: BackgroundTasks, api_key: str = 
 if __name__ == "__main__":
     import uvicorn
     logger.info("Starting FastAPISphinx application")
-    uvicorn.run(app, host="0.0.0.0", port=5001)
+    uvicorn.run(app, host=os.getenv("FAST_API_SPHINX_HOST"), port=5001)
