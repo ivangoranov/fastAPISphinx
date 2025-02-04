@@ -55,6 +55,7 @@ def get_client_ip(request: Request):
 @app.middleware("http")
 async def api_key_middleware(request: Request, call_next):
     api_key = request.headers.get("X-API-Key")
+    client_ip = get_client_ip(request)
     if api_key != API_KEY:
         return JSONResponse(status_code=403, content={"message": "Forbidden: Invalid or missing API key"})
     if request.method == "POST" and request.url.path == "/reindex":
@@ -116,4 +117,4 @@ def reindex(request: Request, background_tasks: BackgroundTasks, api_key: str = 
 if __name__ == "__main__":
     import uvicorn
     logger.info("Starting FastAPISphinx application")
-    uvicorn.run(app, host=os.getenv("FAST_API_SPHINX_HOST"), port=5001)
+    uvicorn.run(app, host=os.getenv("FAST_API_SPHINX_HOST"), port=int(os.getenv("FAST_API_SPHINX_PORT")))
